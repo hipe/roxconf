@@ -12,6 +12,10 @@ The purpose of this stuff being in version control is so that a) if we break som
 
 
 == making symlinks
+
 ln -s /home/roxanne/roxgibson/nginx-conf /etc/nginx/conf
 ln -s /home/roxanne/roxgibson/motion-conf /etc/motion
 
+
+== committing 
+as a wierd experiment, we will see if we can have different users commit to the same repository.  the fixperms script is for this.  you will need sudo privileges to run it.  see more information in that script.
