@@ -12,5 +12,6 @@ The purpose of this stuff being in version control is so that a) if we break som
 
 
 == making symlinks
-/etc/nginx/conf -> /home/roxanne/roxgibson/nginx-conf
+ln -s /home/roxanne/roxgibson/nginx-conf /etc/nginx/conf
+ln -s /home/roxanne/roxgibson/motion-conf /etc/motion
 
