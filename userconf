@@ -1,0 +1,194 @@
+#!/usr/bin/env ruby
+
+# require 'rubygems'; require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
+require 'fileutils'
+require 'hipe-tinyscript/core'
+require 'hipe-tinyscript/support'
+require 'pp'
+module Fiz; end
+Fiz::Config = {
+  :aliases => '.bash_aliases'
+}
+class Fiz::User
+  def initialize agent, name
+    fail("no: #{name.inspect}") unless /\A[A-Za-z]+\z/m =~ name
+    @ui = agent
+    @name = name
+  end
+  attr_reader :name
+  def home
+    "/home/#{@name}"
+  end
+  def aliases
+    @aliases ||= Fiz::Aliases.new(@ui, self, File.join(home, Fiz::Config[:aliases]))
+  end
+end
+class Fiz::Users
+  include Hipe::Tinyscript::Colorize
+  def initialize agent
+    @ui = agent
+    @users = []
+  end
+  def list
+    @users.dup
+  end
+  def load_from_file file
+    File.open(file, 'r') do |fh|
+      while line = fh.gets do
+        line = (/^([^ #\n]+)/).match(line)[1]
+        @users.push Fiz::User.new(@ui, line)
+      end
+    end
+  end
+end
+class Fiz::Aliases
+  include Hipe::Tinyscript::Colorize
+  include Hipe::Tinyscript::Support::FileyCoyote
+  def initialize(agent, user, path)
+    @ui = agent
+    @user = user
+    @path = path
+    puts @path.inspect
+    @username = user.name
+  end
+  def to_hash
+    if File.exist? @path
+      hash = {}
+      File.open(@path, 'r') do |fh|
+        while line = fh.gets do
+          line = line.strip
+          '' == line and next
+          md = (/^alias ([^=]+)=(.+)$/).match(line)
+          if ! md
+            out colorize('skipping: ',:yellow) << line.inspect
+          else
+            hash[md[1]] = md[2]
+          end
+        end
+      end
+      hash
+    else
+      @ui.out "none: #{@path}"
+      {}
+    end
+  end
+  def out *a
+    @ui.out(*a)
+  end
+  def dry_run?
+    @ui.dry_run?
+  end
+  def alias_line name, val
+    "alias #{name}=#{val}"
+  end
+  Sabf = '# start added by fiz'
+  Eabf = '# end added by fiz'
+  def merge_in! hash
+    if ! File.exist? @path
+      lines = [Sabf]
+      lines.concat hash.keys.sort.map{|k| alias_line(k, hash[k])}
+      lines.push Eabf
+      lines.push ''
+      update_file_contents @path, lines.join("\n")
+      FileUtils.chown(@username, @username, @path, :verbose => true, :noop => dry_run?)
+    else
+      my_hash = to_hash
+      add_keys = hash.keys - my_hash.keys
+      skip_keys = my_hash.keys && hash.keys
+      skip_keys.each_with_index do |k, idx|
+        skip_keys[idx] = nil if my_hash[k] == hash[k]
+      end
+      skip_keys.compact!
+      if skip_keys.any?
+        @ui.out "with #{@path}"
+      end
+      skip_keys.sort.each do |k|
+        @ui.out "skipping: #{k} (theirs: #{hash[k].inspect}  mine: #{my_hash[k].inspect})"
+      end
+      if add_keys.empty?
+        @ui.out "nothing new to add to #{@path}"
+        return
+      end
+      lines = File.read(@path).split("\n")
+      sidx = nil
+      if ! (idx = lines.index(Sabf))
+        lines.push Sabf
+        sidx = lines.size - 1
+      end
+      eidx = nil
+      if ! (eidx = lines.index(Eabf))
+        lines.push Eabf
+        eidx = lines.size - 1
+      end
+      new_lines = add_keys.sort.map{|k| alias_line(k, hash[k])}
+      out colorize('adding: ', :green) << "to #{@path}"
+      new_lines.each do |line|
+        puts  "  #{line}"
+      end
+      lines.insert(eidx, *new_lines)
+      nu = make_backup(@path)
+      FileUtils.chown(@username, @username, nu, :verbose => true, :noop => dry_run?)
+      update_file_contents(@path, lines.join("\n"))
+      nil
+    end
+  end
+end
+module Fiz::Commands; end
+
+class Fiz::Command < Hipe::Tinyscript::Command
+  def dry_run?
+    @param[:dry_run]
+  end
+end
+
+class Fiz::Commands::AliasesMerge < Fiz::Command
+  description  "fuggin whatever. merge those shits"
+  parameter '-n','--dry-run', 'dry run'
+  parameter '-s','--show', 'just show merged info and exit'
+  parameter('--noread USER', "don't add ones from here to there, but still there to here") do |x|
+    @param[:noread] ||= []; @param[:noread].push(x)
+  end
+  parameter('--nowrite USER', "don't write these ones") {|x| @param[:nowrite] ||= []; @param[:nowrite].push(x) }
+  def execute
+    @param[:noread] ||= []
+    @param[:nowrite] ||= []
+    status = root_check and return status
+    @users = Fiz::Users.new self
+    @users.load_from_file('aha_people')
+    h = {}
+    @users.list.each do |user|
+      if @param[:noread].include?(user.name)
+        out colorize('skipping read: ',:green) << user.name
+      else
+        h.merge! user.aliases.to_hash
+      end
+    end
+    if @param[:show]
+      PP.pp h
+      return
+    end
+    @users.list.each do |user|
+      if @param[:nowrite].include?(user.name)
+        out colorize('no write: ', :green) << user.name
+      else
+        user.aliases.merge_in!(h)
+      end
+    end
+  end
+  def root_check
+    if 'root' == ENV['USER']
+      nil
+    else
+      out colorize('notice: ', :yellow) << " this is pretty useless unless you run as root b/c you can't see into ppls homedirs etc"
+      nil
+    end
+  end
+end
+
+class Fiz::App < Hipe::Tinyscript::App
+  commands Fiz::Commands
+  config Fiz::Config
+end
+
+
+Fiz::App.new.run(ARGV) if File.basename($PROGRAM_NAME) == File.basename(__FILE__)
