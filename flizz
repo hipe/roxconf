@@ -2,7 +2,7 @@
 
 here = File.dirname(__FILE__)
 require "#{here}/hipe-tinyscript/core.rb"
-require "#{here}/hipe-tinyscript/support.rb"
+# require "#{here}/hipe-tinyscript/support.rb"
 require 'fileutils'
 
 module Flizz; end
@@ -23,7 +23,7 @@ module Flizz
     def dry_run?; @param[:dry_run] end
   end
   module Commands
-    class Simmies < MyCommand
+    class Symlinks < MyCommand
       description "symlinks -- check'em, make'em"
       parameter '-n', '--dry-run', "don't do eet"
       parameter :host, Hash[*Config[:hosts].map{|x| [x[:name], x[:name]]}.flatten], '',
@@ -38,13 +38,17 @@ module Flizz
       def do_simmy simmy
         src, tgt = [simmy[:src], simmy[:tgt]]
         full_src = File.expand_path(src, File.dirname(__FILE__))
-        if File.exist?(tgt)
+        if File.exist?(tgt) || File.symlink?(tgt) # catches bad symlinks
           if File.symlink?(tgt)
             actual_src = File.readlink(tgt) # http://ruby-doc.org/core/classes/File.src/M002534.html
             if actual_src == full_src
               out colorize('ok: ', :green) << "#{tgt} -> #{full_src}"
             else
-              out.colorize('notice: ', :yellow) << "#{tgt} -> #{actual_src} (! #{full_src})"
+              out colorize('notice: ', :yellow) << "#{tgt} -> #{actual_src} (! #{full_src})"
+              if ! File.exist?(tgt)
+                out colorize('notice: ', :yellow) <<
+                  "#{colorize(tgt, :magenta)} -> #{actual_src} (target path does not exist)"
+              end
             end
           else
             out colorize('notice: ', :yellow) << "not a symlink: #{tgt}"
