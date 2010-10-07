@@ -1,16 +1,16 @@
 #!/usr/bin/env ruby
 
+require 'fileutils'
 here = File.dirname(__FILE__)
 require "#{here}/hipe-tinyscript/core.rb"
-# require "#{here}/hipe-tinyscript/support.rb"
-require 'fileutils'
+require "#{here}/hipe-diff/diff.rb" # careful! pulls in rubygems for diff/lcs
 
 module Flizz; end
 Flizz::Config = {
   :simmies => [
     {:src => './the-gibson/nginx-conf', :tgt => '/etc/nginx/conf' },
     {:src => './the-gibson/motion-conf', :tgt => '/etc/motion'    },
-    {:src => './hipeland/monit-conf/monitrc', :tgt => '/etc/monitrc' }
+    {:src => './hipeland/monit-conf/monitrc', :tgt => '/etc/monitrc', :not_link => 1}
   ],
   :hosts => [
     {:name => 'hipeland' },
@@ -26,6 +26,7 @@ module Flizz
     class Symlinks < MyCommand
       description "symlinks -- check'em, make'em"
       parameter '-n', '--dry-run', "don't do eet"
+      parameter '-v', '--version', "with non-symlinked configs pull changes back to here"
       parameter :host, Hash[*Config[:hosts].map{|x| [x[:name], x[:name]]}.flatten], '',
         :positional => 1, :required => 1
       def execute
@@ -36,6 +37,7 @@ module Flizz
       end
     private
       def do_simmy simmy
+        return not_link(simmy) if simmy[:not_link]
         src, tgt = [simmy[:src], simmy[:tgt]]
         full_src = File.expand_path(src, File.dirname(__FILE__))
         if File.exist?(tgt) || File.symlink?(tgt) # catches bad symlinks
@@ -55,6 +57,30 @@ module Flizz
           end
         else
           FileUtils.ln_s(full_src, tgt, :verbose => 1, :noop => dry_run?)
+        end
+      end
+      def not_link simmy
+        full_src = File.expand_path(simmy[:src], File.dirname(__FILE__))
+        tgt = simmy[:tgt]
+        if File.symlink?(tgt)
+          out colorize("error: ", :red) << "cannot be symlink: #{tgt} (per config above)"
+        elsif File.exist? tgt
+          versioned = File.read(full_src)
+          unversioned = File.read(tgt)
+          if versioned == unversioned
+            out colorize('ok: ', :green) << "#{tgt} == #{full_src} (#{tgt.size} bytes ok)"
+          else
+            out colorize("diff --git #{full_src} #{tgt}", :yellow)
+            out colorize("--- #{full_src}", :yellow)
+            out colorize("+++ #{tgt}", :yellow)
+            out Hipe::Diff.colorize(versioned, unversioned)
+          end
+          if @param[:version]
+            FileUtils.cp(tgt, full_src, :verbose =>1, :noop => dry_run?)
+          end
+        else
+          fail("no thanks") if File.directory?(full_src)
+          FileUtils.cp(full_src, tgt, :verbose => 1, :noop => dry_run?)
         end
       end
     end
