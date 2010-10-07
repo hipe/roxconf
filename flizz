@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+# require 'rubygems'; require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
 require 'fileutils'
 here = File.dirname(__FILE__)
 require "#{here}/hipe-tinyscript/core.rb"
@@ -94,4 +95,4 @@ module Flizz
   end
 end
 
-Flizz::App.new.run(ARGV)
+Flizz::App.new.run(ARGV) if File.basename(__FILE__) == File.basename($PROGRAM_NAME)
