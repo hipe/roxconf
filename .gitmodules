@@ -1,3 +1,6 @@
 [submodule "hipe-tinyscript"]
 	path = hipe-tinyscript
 	url = git@hipeland.org:hipe-tinyscript
+[submodule "hipe-diff"]
+	path = hipe-diff
+	url = git@hipeland.org:hipe-diff
