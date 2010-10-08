@@ -1,9 +1,10 @@
 #!/usr/bin/env ruby
+module Hipe; end
+here = File.dirname(__FILE__)
 
 # require 'rubygems'; require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
 require 'fileutils'
-here = File.dirname(__FILE__)
-require "#{here}/hipe-tinyscript/core.rb"
+require "#{here}/hipe-tinyscript/core" unless Hipe.const_defined?('Tinyscript') #etc
 require "#{here}/hipe-diff/diff.rb" # careful! pulls in rubygems for diff/lcs
 
 module Flizz; end
