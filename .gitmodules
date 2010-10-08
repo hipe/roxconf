@@ -4,3 +4,6 @@
 [submodule "hipe-diff"]
 	path = hipe-diff
 	url = git@hipeland.org:hipe-diff
+[submodule "monitconf.d"]
+	path = monitconf.d
+	url = git@hipeland.org:monitconf
