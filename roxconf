@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 
-# don't rely on rubygems to avoid pulling in the library redundantly
 # require 'rubygems'; require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
+
+# don't rely on rubygems to avoid pulling in the library redundantly
 module Hipe; end
 me = File.dirname(__FILE__)
 require "#{me}/hipe-tinyscript/core.rb" unless Hipe.const_defined? 'Tinyscript'
@@ -32,9 +33,9 @@ module Hipe::Tinyscript
       @app.commands.each do |c|
         matrix.push [c.short_name, c.desc_oneline]
       end
-      @app.child_apps.sort{|a,b| a.program_name <=> b.program_name }.each do |app|
-        app.commands.each do |c|
-          matrix.push ["#{app.program_name} #{c.short_name}", c.desc_oneline]
+      @app.child_app_classes.sort{|a,b| a.program_name <=> b.program_name }.each do |app_cls|
+        app_cls.new.commands.each do |c| # ich muss sein
+          matrix.push ["#{app_cls.program_name} #{c.short_name}", c.desc_oneline]
         end
       end
       t = tableize(matrix)
@@ -51,16 +52,23 @@ module Hipe::Tinyscript
     end
   end
 
+  # make it look like an app for some purposes
+  class AppStub
+    def initialize info
+      @info = info
+    end
+    def short_name
+      File.basename(@app[:path])
+    end
+  end
+
   class MultiplexApp < App
     default_command_class MultiplexCommand
     attr_reader :app
-    def child_apps
-      @child_apps ||= build_child_apps
+    def child_app_classes
+      @child_app_classes ||= config[:apps].map{ |app| load_app_class(app) }.compact
     end
-    def build_child_apps
-      self.config[:apps].map{ |app| build_child_app(app) }.compact
-    end
-    def build_child_app app_info
+    def load_app_class app_info
       path = expand_app_path(app_info[:path])
       return on_missing_app_file(path) if ! File.exist?(path)
       sz1 = Hipe::Tinyscript::App.subclasses.size
@@ -69,14 +77,40 @@ module Hipe::Tinyscript
       sz2 = Hipe::Tinyscript::App.subclasses.size
       return on_failed_to_determine_app_class(path, sz1, sz2) unless 1 == ( sz2 - sz1 )
       cls = Hipe::Tinyscript::App.subclasses.last
-      app = cls.new
-      app.program_name = File.basename(path) # es muss sein
-      app
+      cls.program_name = File.basename(path) # es muss sein
+      cls
     end
-    # def on_already_loaded path
-    #   out colorize('notice: ', :yellow) << "cannot determine subclass. Path already loaded: #{path}"
-    #   nil
-    # end
+    # you're guaranteed that argv has a first arg is a non-switch arg
+    def find_commands argv
+      cmds = super(argv)
+      return cmds if cmds.any? # it makes life suck not doing this.
+      command_str = argv.first # no who hah net
+      re = Regexp.new("^#{Regexp.escape(command_str)}")
+      infos = config[:apps].select{ |a| re =~ File.basename(a[:path]) }
+      if infos.size > 1 && (ai = infos.detect{ |a| command_str == File.basename(a[:path])} )
+        infos = [ai]
+      end
+      infos.size == 1 ? [load_app_class(infos.first)] : infos.map{ |i| AppProxy.new(i) }
+    end
+  protected
+    def run_command cmd_or_app_class, argv
+      if cmd_or_app_class.instance_method(:run).arity == 1
+        cmd_or_app_class.new.run(argv.slice(1..-1))
+      else
+        super(cmd_class, argv)
+      end
+    end
+  private
+    def expand_app_path path
+      if path[0] == '/'
+        path
+      elsif path.index('<%=')
+        @smart_vars ||= Hipe::Tinyscript::Support::ClosedStruct.new(:home => proc{ ENV['HOME'] })
+        Hipe::Tinyscript::Support::Template.new(path).interpolate(@smart_vars)
+      else
+        File.expand_path(path, File.dirname(__FILE__))
+      end
+    end
     def on_missing_app_file path
       out colorize('notice: ', :yellow) << "not found: #{path}"
       nil
@@ -89,21 +123,6 @@ module Hipe::Tinyscript
         out colorize("notice: ", :yellow) << "File defines more than one (#{sz2-sz1}) subclasses of ::App: #{path}"
       end
       nil
-    end
-    def expand_app_path path
-      if path[0] == '/'
-        path
-      elsif path.index('<%=')
-        @smart_vars ||= Hipe::Tinyscript::Support::ClosedStruct.new(
-          :home => proc{ ENV['HOME'] }
-        )
-        Hipe::Tinyscript::Support::Template.new(path).interpolate(smart_vars)
-      else
-        File.expand_path(path, File.dirname(__FILE__))
-      end
-    end
-    def smart_vars
-      @smart_vars ||= SmartVars.new(self)
     end
   end
 end
