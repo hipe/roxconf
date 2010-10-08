@@ -1,10 +1,16 @@
 #!/usr/bin/env ruby
 
-# require 'rubygems'; require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
+module Hipe; end
+here = File.dirname(__FILE__)
+
 require 'fileutils'
-require 'hipe-tinyscript/core'
-require 'hipe-tinyscript/support'
 require 'pp'
+
+# require 'rubygems'; require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
+# without depending on rubygems, avoid redundantly loading the lib (if multiplexed)
+require "#{me}/hipe-tinyscript/core" unless Hipe.const_defined?('Tinyscript')
+require "#{me}/hipe-tinyscript/support" unless Hipe::Tinyscript.const_defined?('Support')
+
 module Fiz; end
 Fiz::Config = {
   :aliases => '.bash_aliases'
