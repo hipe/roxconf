@@ -1,0 +1,123 @@
+#!/usr/bin/env ruby
+
+# don't rely on rubygems to avoid pulling in the library redundantly
+# require 'rubygems'; require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
+module Hipe; end
+me = File.dirname(__FILE__)
+require "#{me}/hipe-tinyscript/core.rb" unless Hipe.const_defined? 'Tinyscript'
+require "#{me}/hipe-tinyscript/support.rb" unless Hipe::Tinyscript.const_defined? 'Support'
+
+module RoxConf; end
+RoxConf::Conf = {
+  # relative paths will be relative to **this __FILE__** ! not pwd
+  :apps => [
+    { :path => 'confconf' },
+    { :path => 'userconf' },
+    { :path => '/var/sites/redmine/mineconf' },
+    { :path => '<%= home %>/gitolite-admin/repoconf' }
+  ]
+}
+
+module Hipe::Tinyscript
+  # experimental home, might be moved
+  FOUR = 4
+  class MultiplexCommand < Hipe::Tinyscript::App::DefaultCommand # oh boy
+    def initialize *a
+      super(*a)
+      @flatten_commands = true # on display etc
+    end
+    def show_maybe_command_help cmd=nil
+      throw :app_interrupt, [:show_command_specific_help, cmd] unless cmd.nil? # just yes
+      matrix = []
+      @app.commands.each do |c|
+        matrix.push [c.short_name, c.desc_oneline]
+      end
+      @app.child_apps.sort{|a,b| a.program_name <=> b.program_name }.each do |app|
+        app.commands.each do |c|
+          matrix.push ["#{app.program_name} #{c.short_name}", c.desc_oneline]
+        end
+      end
+      t = tableize(matrix)
+      new_col1_width = [ t.width(0) + FOUR, option_parser.summary_width ].max
+      option_parser.summary_width = new_col1_width
+      out option_parser.help
+      out colorize('commands:', :bright, :green)
+      if t.rows.any?
+        whitespace = ' ' * (FOUR + FIXME)
+        fmt = "    %#{t.width(0)}s#{whitespace}%-#{t.width(1)}s"
+        t.rows.each{ |colA, colB| out sprintf(fmt, colA, colB) }
+      end
+      :interrupt_handled
+    end
+  end
+
+  class MultiplexApp < App
+    default_command_class MultiplexCommand
+    attr_reader :app
+    def child_apps
+      @child_apps ||= build_child_apps
+    end
+    def build_child_apps
+      self.config[:apps].map{ |app| build_child_app(app) }.compact
+    end
+    def build_child_app app_info
+      path = expand_app_path(app_info[:path])
+      return on_missing_app_file(path) if ! File.exist?(path)
+      sz1 = Hipe::Tinyscript::App.subclasses.size
+      # out colorize('loading: ', :blink, :bright, :yellow) << path
+      load path # can't require, it requires an '*.rb'
+      sz2 = Hipe::Tinyscript::App.subclasses.size
+      return on_failed_to_determine_app_class(path, sz1, sz2) unless 1 == ( sz2 - sz1 )
+      cls = Hipe::Tinyscript::App.subclasses.last
+      app = cls.new
+      app.program_name = File.basename(path) # es muss sein
+      app
+    end
+    # def on_already_loaded path
+    #   out colorize('notice: ', :yellow) << "cannot determine subclass. Path already loaded: #{path}"
+    #   nil
+    # end
+    def on_missing_app_file path
+      out colorize('notice: ', :yellow) << "not found: #{path}"
+      nil
+    end
+    def on_failed_to_determine_app_class path, sz1, sz2
+      case sz2 - sz1
+      when 0
+        out colorize("notice: ", :yellow) << "File does not define any immediate subclasses of ::App? #{path}"
+      else
+        out colorize("notice: ", :yellow) << "File defines more than one (#{sz2-sz1}) subclasses of ::App: #{path}"
+      end
+      nil
+    end
+    def expand_app_path path
+      if path[0] == '/'
+        path
+      elsif path.index('<%=')
+        @smart_vars ||= Hipe::Tinyscript::Support::ClosedStruct.new(
+          :home => proc{ ENV['HOME'] }
+        )
+        Hipe::Tinyscript::Support::Template.new(path).interpolate(smart_vars)
+      else
+        File.expand_path(path, File.dirname(__FILE__))
+      end
+    end
+    def smart_vars
+      @smart_vars ||= SmartVars.new(self)
+    end
+  end
+end
+
+module RoxConf
+  module Commands
+  end
+end
+
+module RoxConf
+  class App < Hipe::Tinyscript::MultiplexApp
+    config Conf
+    commands Commands
+  end
+end
+
+RoxConf::App.new.run(ARGV) if File.basename($PROGRAM_NAME) == File.basename(__FILE__)
