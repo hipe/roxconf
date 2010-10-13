@@ -15,8 +15,9 @@ RoxConf::Conf = {
   :apps => [
     { :path => 'confconf' },
     { :path => 'userconf' },
+    { :path => 'redconf' },
     { :path => 'monitconf.d/monitconf'},
-    { :path => '/var/sites/redmine/mineconf', :git =>  'git@hipeland.org:roxredmine' },
+    { :path => '/var/sites/redmine-aha/current/scripts/mineconf' },
     { :path => '<%= home %>/gitolite-admin/repoconf', :git => 'git@hipeland.org:gitolite-admin'}
   ]
 }
