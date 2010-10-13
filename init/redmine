@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+### BEGIN INIT INFO
+# Provides:          redmine
+# Required-Start:    $local_fs $remote_fs
+# Required-Stop:     $local_fs $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      S 0 1 6
+# Short-Description: redmine initscript
+# Description:       redmine
+### END INIT INFO
+
+# Original author: Mark Meves
+# based off of thin init script
+
+# Do NOT "set -e"
+
+SCRIPT_NAME=/etc/init.d/redmine
+APP_ROOT=/var/sites/redmine-$1/current/redmine-trunk
+__BUNDLE_PATH=bundle
+CONFIG_PATH=/etc/thin/redmine-$1.yml
+RVM_SCRIPT=/usr/local/rvm/scripts/rvm
+RVM_PATH=rvm
+THIN_PATH=/usr/bin/thin
+
+if [ ! -f "$CONFIG_PATH" ] ; then
+  echo "Config not found: $CONFIG_PATH" >&2
+  exit 3
+fi
+
+if [ ! -x "$APP_ROOT" ] ; then
+  echo "App root not found: $APP_ROOT" >&2
+  exit 3
+fi
+
+echo "cd $APP_ROOT"
+cd "$APP_ROOT"
+
+echo "source $RVM_SCRIPT"
+source $RVM_SCRIPT
+STATUS=$?
+if [ "0" -ne "$STATUS" ] ; then
+  echo "failed to source rvm script.  exit status: $STATUS" >&2
+  exit 3
+fi
+
+$RVM_PATH use 1.8.7
+STATUS=$?
+echo "$RVM_PATH use 1.8.7"
+
+
+if [  "0" -ne "$STATUS" ] ; then
+  echo "Failed to run rvm: exit status $STATUS" >&2
+  exit 3
+fi
+
+case "$2" in
+  start)
+  $__BUNDLE_PATH exec $THIN_PATH -C $CONFIG_PATH start
+	;;
+  stop)
+  echo "$__BUNDLE_PATH exec $THIN_PATH -C $CONFIG_PATH stop"
+  $__BUNDLE_PATH exec $THIN_PATH -C $CONFIG_PATH stop
+	;;
+  restart)
+  $__BUNDLE_PATH exec $THIN_PATH -C $CONFIG_PATH restart
+	;;
+  *)
+	echo "Usage: $SCRIPT_NAME <redmine-name> {start|stop|restart}" >&2
+	exit 3
+	;;
+esac
+
