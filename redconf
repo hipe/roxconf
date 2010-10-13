@@ -1,0 +1,50 @@
+#!/usr/bin/env ruby
+
+here = File.dirname(__FILE__)
+module Hipe; end
+require "#{here}/hipe-tinyscript/core" unless Hipe.const_defined? :Tinyscript
+require "#{here}/hipe-tinyscript/support" unless Hipe::Tinyscript.const_defined? :Support
+require 'open3'
+
+module Redconf
+  Config = {}
+  module Commands
+    class Install < Hipe::Tinyscript::Command
+      description "install a new redmine instance, reads usernames from STDIN"
+      def execute
+        if $stdin.tty?
+          out "stdin is tty. Please e.g. echo 'some-username' | redconf"
+          return :stdin_is_tty
+        end
+        count = 0
+        while line = $stdin.gets
+          line = line.strip
+          next if "" == line
+          cmd = "su -l #{line}; ./_redconf"
+          status = nil
+          puts cmd
+          Open3.popen3(cmd) do |sin, sout, serr|
+            o = ''; e = nil
+            while o || e do
+              puts o if o && o = sout.gets
+              if !o && e = serr.gets
+                out colorize('error: ', :red) << e
+                status = :err
+              end
+            end
+          end
+          return status if status
+          count += 1
+        end
+        puts "did #{count} user(s)."
+        nil
+      end
+    end
+  end
+  class App < Hipe::Tinyscript::App
+    commands Commands
+    config Config
+  end
+end
+
+Redconf::App.new.run(ARGV) if File.dirname($PROGRAM_NAME) == File.dirname(__FILE__)
