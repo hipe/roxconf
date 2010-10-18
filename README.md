@@ -4,9 +4,9 @@
 
 This is a project in git that for now holds configuration files for roxanne-important stuff, like the nginx config and the motion config.  It might be that we keep the configs for different servers (!?) here for the roxanne family of services.
 
-The purpose of this stuff being in version control is so that a) if we break something we can revert and b) might be easier to deploy roxanne-related services to new servers.
+Additionally it has become a dispatching hub for *all* the important configuration and build scripts (related to roxanne services) that might be (or should be) on the system.
 
-As an added bonus, there is a super duper configuration script called 'roxconf' located in this directory that is a meta-script that is a hub to many other configuration scripts that could be loaded on the system.
+The purpose of this stuff being in version control is so that a) if we break something we can revert and b) might be easier to deploy roxanne-related services to new servers.
 
 == contents
 
@@ -28,8 +28,9 @@ For more information, please run roxconf.  every command is documented, and almo
 
 
 
+== committing
 
-== committing 
+ @todo: erase this whole section.
 
   no:
 
