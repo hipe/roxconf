@@ -10,9 +10,9 @@ require "#{here}/hipe-diff/diff.rb" # careful! pulls in rubygems for diff/lcs
 module Flizz; end
 Flizz::Config = {
   :simmies => [
-    {:src => './the-gibson/nginx-conf', :tgt => '/etc/nginx/conf' },
-    {:src => './the-gibson/motion-conf', :tgt => '/etc/motion'    },
-    {:src => './hipeland/monit-conf/monitrc', :tgt => '/etc/monitrc', :not_link => 1}
+    {:src => './servers/the-gibson/nginx-conf', :tgt => '/etc/nginx/conf' },
+    {:src => './servers/the-gibson/motion-conf', :tgt => '/etc/motion'    },
+    {:src => './servers/hipeland/monit-conf/monitrc', :tgt => '/etc/monitrc', :not_link => 1}
   ],
   :hosts => [
     {:name => 'hipeland' },
