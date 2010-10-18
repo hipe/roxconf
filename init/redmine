@@ -67,7 +67,7 @@ if [ "0" -ne "$STATUS" ] ; then
   exit 3
 fi
 
-$RVM_PATH use 1.8.7
+$RVM_PATH use 1.8.7@roxpm
 STATUS=$?
 echo "$RVM_PATH use 1.8.7"
 
