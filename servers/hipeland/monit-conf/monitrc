@@ -1,0 +1,28 @@
+# this thing is indirectly under version control
+# with something like /etc/roxconf/roxconf symlinks <host>.  try it!
+
+set daemon 120                       # poll in 2 minute intervals
+# set logfile syslog facility LOG_USER # default is LOG_USER, could do LOG_daemon
+set logfile /var/log/monit/monit.log # foo
+set mailserver localhost             # default is localhost. (e.g. mail.foo.bar)
+set alert mark.meves+XYZZY@gmail.com       # alert this person on any event (e.g. sysadm@foo.bar)
+  with mail-format {
+    from: monit@$HOST
+    subject: monit alert -- $EVENT - $SERVICE
+    message:$EVENT Service $SERVICE
+      Date:        $DATE
+      Action:      $ACTION
+      Host:        $HOST
+      Description: $DESCRIPTION
+Your faithful employee,
+Monit
+P.S. -- XYZZY (because this is a test message)
+}
+
+set httpd port 2812 and use address 0.0.0.0
+  # use address localhost  # only accept connection from localhost
+  # allow localhost        # allow localhost to connect to the server and
+  allow user:pass    # require user 'admin' with password 'monit'
+  # allow @monit           # allow users of group 'monit' to connect (rw)
+  # allow @users readonly  # allow users of group 'users' to connect readonly
+

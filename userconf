@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 module Hipe; end
-here = File.dirname(__FILE__)
+me = File.dirname(__FILE__)
 
 require 'fileutils'
 require 'pp'

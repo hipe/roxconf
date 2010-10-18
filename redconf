@@ -1,0 +1,80 @@
+#!/usr/bin/env ruby
+
+here = File.dirname(__FILE__)
+module Hipe; end
+require "#{here}/hipe-tinyscript/core" unless Hipe.const_defined? :Tinyscript
+require "#{here}/hipe-tinyscript/support" unless Hipe::Tinyscript.const_defined? :Support
+require 'fileutils'
+require 'open3'
+
+module Redconf
+  Config = {
+    :docroot => '/var/sites/redmine-<%= username %>/current',
+    :git => 'git@hipeland.org:roxredmine',
+    :branch => 'roxredmine'
+  }
+  module Commands
+    class Install < Hipe::Tinyscript::Command
+      description "does the first step of installing a new redmine instance for yourself."
+      parameter '-n', '--dry-run', "don't actually do anything."
+      def dry_run?
+        @param[:dry_run]
+      end
+      def execute
+        @param[:username] = ENV['USER']
+        fullpath = Hipe::Tinyscript::Support::Template.new(@param[:docroot]).interpolate(@param)
+        parent_dir = File.dirname(fullpath)
+        if File.exist?(fullpath)
+          cnt = Dir["#{fullpath}/*"].size
+          if cnt == 0
+            FileUtils.rmdir(fullpath, :verbose => true, :noop => dry_run?)
+          else
+            out colorize('notice: ', :yellow) << " exists and has files: #{fullpath}"
+            return :has_files
+          end
+        elsif File.exist?(parent_dir)
+          cnt = Dir["#{parent_dir}/*"].size
+          if cnt > 0
+            out colorize('notice: ', :yellow) << " exists but has files other than 'current' in it: #{parend_dir}"
+            out colorize('notice: ', :yellow) << " if it has application files you will probably want to move them first."
+            return :not_empty # probably too strict?
+          end
+        else
+          FileUtils.mkdir_p(parent_dir, :verbose => true, :noop => dry_run?)
+        end
+        # now, parent directory exists and should be empty, hoepfully!
+        cmd = "git clone --branch #{param(:branch)} #{param(:git)} #{fullpath}"
+        system2(cmd) || init_submodules(fullpath)
+      end
+      def system2 cmd
+        out colorize("running: ", :bright, :green) << cmd
+        return :dry_run if dry_run?
+        status = nil
+        Open3.popen3(cmd) do |sin, sout, serr|
+         o = ''; e = nil
+          while o || e do
+            out o if o && o = sout.gets
+            if !o && e = serr.gets
+              out colorize('err: ', :red) << e
+              status = :git_error
+            end
+          end
+        end
+        status
+      end
+      def init_submodules fullpath
+        FileUtils.cd(fullpath) do
+          return st if st = system2("git submodule init")
+          return st if st = system2("git submodule update")
+        end
+        nil
+      end
+    end
+  end
+  class App < Hipe::Tinyscript::App
+    commands Commands
+    config Config
+  end
+end
+
+Redconf::App.new.run(ARGV) if File.dirname($PROGRAM_NAME) == File.dirname(__FILE__)
