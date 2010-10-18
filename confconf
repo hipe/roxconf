@@ -7,8 +7,8 @@ require 'fileutils'
 require "#{here}/hipe-tinyscript/core" unless Hipe.const_defined?('Tinyscript') #etc
 require "#{here}/hipe-diff/diff.rb" # careful! pulls in rubygems for diff/lcs
 
-module Flizz; end
-Flizz::Config = {
+module ConfConf; end
+ConfConf::Config = {
   :simmies => [
     {:src => './servers/the-gibson/nginx-conf', :tgt => '/etc/nginx/conf' },
     {:src => './servers/the-gibson/motion-conf', :tgt => '/etc/motion'    },
@@ -20,20 +20,25 @@ Flizz::Config = {
   ]
 }
 
-module Flizz
+module ConfConf
   class MyCommand < Hipe::Tinyscript::Command
-    def dry_run?; @param[:dry_run] end
+    def notice msg
+      out colorize('notice: ', :yellow) << msg
+      nil
+    end
   end
   module Commands
-    class Symlinks < MyCommand
-      description "symlinks -- check'em, make'em"
+    class Sync < MyCommand
+      description "symlinks -- check'em, make'em.  pull non-symlinkable confs into scm."
       parameter '-n', '--dry-run', "don't do eet"
-      parameter '-v', '--version', "with non-symlinked configs pull changes back to here"
+      parameter '--pull', "with non-symlinked configs pull changes back to here"
       parameter :host, Hash[*Config[:hosts].map{|x| [x[:name], x[:name]]}.flatten], '',
         :positional => 1, :required => 1
       def execute
-        re = Regexp.new('^'+Regexp.escape("./#{param(:host)}"))
+        base = "./servers/#{param(:host)}"
+        re = Regexp.new('^'+Regexp.escape(base))
         simmies = Config[:simmies].select{|x| x[:src] =~ re }
+        return notice("nothing to do for #{base.inspect}") if simmies.empty?
         simmies.each{ |simmy| do_simmy(simmy) }
         nil
       end
@@ -89,11 +94,11 @@ module Flizz
   end
 end
 
-module Flizz
+module ConfConf
   class App < Hipe::Tinyscript::App
     commands Commands
     config Config
   end
 end
 
-Flizz::App.new.run(ARGV) if File.basename(__FILE__) == File.basename($PROGRAM_NAME)
+ConfConf::App.new.run(ARGV) if File.basename(__FILE__) == File.basename($PROGRAM_NAME)
