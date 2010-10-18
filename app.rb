@@ -136,9 +136,7 @@ module Hipe::Tinyscript
 end
 
 module RoxConf
-  class MyCommand < Hipe::Tinyscript::Command
-    def dry_run?; @param[:dry_run] end
-  end
+  class MyCommand < Hipe::Tinyscript::Command; end
   module Commands
     class Check < MyCommand
       include Hipe::Tinyscript::MultiplexMethods
@@ -234,5 +232,3 @@ module RoxConf
     commands Commands
   end
 end
-
-RoxConf::App.new.run(ARGV) if File.basename($PROGRAM_NAME) == File.basename(__FILE__)
