@@ -1,1 +1,10 @@
-# nothing yet
+# this thing is indirectly under version control
+# with something like /etc/roxconf/roxconf symlinks <host>.  try it!
+
+set daemon 120                       # poll in 2 minute intervals
+set logfile syslog facility LOG_USER # default is LOG_USER, could do LOG_daemon
+set mailserver localhost             # default is localhost. (e.g. mail.foo.bar)
+set alert mark.meves@gmail.com       # alert this person on any event (e.g. sysadm@foo.bar)
+set httpd port 2182                  # monit's mini httpd server "address localhost" for local only
+allow india:charlie                  # it's good to put passwords in version control
+
