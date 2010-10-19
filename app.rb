@@ -1,8 +1,4 @@
-#!/usr/bin/env ruby
-
-# require 'rubygems'; require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
-
-# don't rely on rubygems to avoid pulling in the library redundantly
+# require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
 module Hipe; end
 me = File.dirname(__FILE__)
 require "#{me}/hipe-tinyscript/core.rb" unless Hipe.const_defined? 'Tinyscript'
@@ -17,9 +13,10 @@ RoxConf::Conf = {
     { :path => 'userconf' },
     { :path => 'redconf' },
     { :path => 'monitconf.d/monitconf'},
-    { :path => '/etc/thin/thinconf' },
-    { :path => '/var/sites/redmine-aha/current/scripts/mineconf' },
-    { :path => '<%= home %>/gitolite-admin/repoconf', :git => 'git@hipeland.org:gitolite-admin'}
+    { :path => '/etc/thin/thinconf', :cd => :dir },
+    { :path => 'uniconf' },
+    { :path => '/var/sites/redmine-aha/current/script/mineconf', :cd => '../..' },
+    { :path => '<%= home %>/gitolite-admin/repoconf', :git => 'git@hipeland.org:gitolite-admin', :cd => '..' }
   ]
 }
 
@@ -81,6 +78,20 @@ module Hipe::Tinyscript
 
   class MultiplexApp < App
     include MultiplexMethods
+    class << self
+      include MultiplexMethods
+      # give reflection of the paths for apps that are in their own repo (used externally)
+      def app_roots
+        [ File.dirname(__FILE__) ] +
+        config[:apps].map{ |info|
+          case info[:cd]
+          when nil  ; nil
+          when :dir ; "#{expand_app_path(info[:path])}.d"
+          else File.expand_path(info[:cd], expand_app_path(info[:path]))
+          end
+        }.compact
+      end
+    end
     default_command_class MultiplexCommand
     attr_reader :app
     def child_app_classes
