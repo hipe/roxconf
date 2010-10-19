@@ -6,19 +6,7 @@ require "#{me}/hipe-tinyscript/support.rb" unless Hipe::Tinyscript.const_defined
 require 'open3'
 
 module RoxConf; end
-RoxConf::Conf = {
-  # relative paths will be relative to **this __FILE__** ! not pwd
-  :apps => [
-    { :path => 'confconf' },
-    { :path => 'userconf' },
-    { :path => 'redconf' },
-    { :path => 'monitconf.d/monitconf'},
-    { :path => '/etc/thin/thinconf', :cd => :dir },
-    { :path => 'uniconf' },
-    { :path => '/var/sites/redmine-aha/current/script/mineconf', :cd => '../..' },
-    { :path => '<%= home %>/gitolite-admin/repoconf', :git => 'git@hipeland.org:gitolite-admin', :cd => '..' }
-  ]
-}
+require File.dirname(__FILE__) + '/conf'
 
 module Hipe::Tinyscript
   # experimental home, might be moved
