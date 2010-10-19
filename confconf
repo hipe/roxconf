@@ -12,7 +12,8 @@ ConfConf::Config = {
   :simmies => [
     {:src => './servers/the-gibson/nginx-conf', :tgt => '/etc/nginx/conf' },
     {:src => './servers/the-gibson/motion-conf', :tgt => '/etc/motion'    },
-    {:src => './servers/hipeland/monit-conf/monitrc', :tgt => '/etc/monitrc', :not_link => 1}
+    {:src => './servers/hipeland/monit-conf/monitrc', :tgt => '/etc/monitrc', :not_link => 1},
+    {:src => './servers/hipeland/etc/unicorn/redmine-git.conf.rb', :tgt => '/etc/unicorn/redmine-git.conf.rb' }
   ],
   :hosts => [
     {:name => 'hipeland' },
@@ -30,10 +31,12 @@ module ConfConf
   module Commands
     class Sync < MyCommand
       description "symlinks -- check'em, make'em.  pull non-symlinkable confs into scm."
+      parameter :nolinks, '-L', "don't do symlinks"
       parameter '-n', '--dry-run', "don't do eet"
-      parameter '--pull', "with non-symlinked configs pull changes back to here"
       parameter :host, Hash[*Config[:hosts].map{|x| [x[:name], x[:name]]}.flatten], '',
         :positional => 1, :required => 1
+      parameter :action, "pull: pull non-symlinkable changes back into scm.",
+        "push: push files in scm out to server", {'push'=>'push', 'pull' => 'pull'}, '', :positional => 1
       def execute
         base = "./servers/#{param(:host)}"
         re = Regexp.new('^'+Regexp.escape(base))
@@ -45,6 +48,7 @@ module ConfConf
     private
       def do_simmy simmy
         return not_link(simmy) if simmy[:not_link]
+        return if @param.key? :nolinks
         src, tgt = [simmy[:src], simmy[:tgt]]
         full_src = File.expand_path(src, File.dirname(__FILE__))
         if File.exist?(tgt) || File.symlink?(tgt) # catches bad symlinks
@@ -82,9 +86,15 @@ module ConfConf
             out colorize("+++ #{tgt}", :yellow)
             out Hipe::Diff.colorize(versioned, unversioned)
           end
-          if @param[:version]
+          case @param[:action]
+          when nil ;
+          when 'pull' ;
             FileUtils.cp(tgt, full_src, :verbose =>1, :noop => dry_run?)
+          when 'push' ;
+            FileUtils.cp(full_src, tgt, :verbose =>1, :noop => dry_run?)
+          else fail("unexpected action: #{param[:action]}")
           end
+          nil
         else
           fail("no thanks") if File.directory?(full_src)
           FileUtils.cp(full_src, tgt, :verbose => 1, :noop => dry_run?)
