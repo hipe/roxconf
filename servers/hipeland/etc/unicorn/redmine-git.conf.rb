@@ -2,8 +2,8 @@ require '/etc/roxconf/uniconf.d/support'
 
 # see the example config file that uniconf builds
 
-thin = Uniconf::ThinConfigFile.at('/etc/thin/redmine-hipe.yml')
-worker_processes 2
+thin = Uniconf::ThinConfigFile.at('/etc/thin/redmine-git.yml')
+worker_processes 1
 working_directory thin.chdir
 listen "/tmp/.sock", :backlog => 64
 listen thin.port, :tcp_nopush => true
