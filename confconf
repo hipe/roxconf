@@ -5,6 +5,7 @@ here = File.dirname(__FILE__)
 # require 'rubygems'; require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
 require 'fileutils'
 require "#{here}/hipe-tinyscript/core" unless Hipe.const_defined?('Tinyscript') #etc
+require 'rubygems' # while we figure out the way to avoid this when using rubygems
 require "#{here}/hipe-diff/diff.rb" # careful! pulls in rubygems for diff/lcs
 
 module ConfConf; end
@@ -77,7 +78,12 @@ module ConfConf
           out colorize("error: ", :red) << "cannot be symlink: #{tgt} (per config above)"
         elsif File.exist? tgt
           versioned = File.read(full_src)
-          unversioned = File.read(tgt)
+          begin
+            unversioned = File.read(tgt)
+          rescue Errno::EACCES => e
+            out colorize('notice: ', :yellow) << e.to_s
+            return nil
+          end
           if versioned == unversioned
             out colorize('ok: ', :green) << "#{tgt} == #{full_src} (#{tgt.size} bytes ok)"
           else
