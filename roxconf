@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require 'rubygems' # this is ok for application code not library code
+
 require File.dirname(__FILE__) + '/app'
 
 RoxConf::App.new.run(ARGV) if File.basename($PROGRAM_NAME) == File.basename(__FILE__)
