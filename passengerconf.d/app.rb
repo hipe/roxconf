@@ -18,7 +18,7 @@ module PassengerConf
   end
   module Commands
     class Install < MyCommand
-      description "gem install who-hah"
+      description "gem install passenger; makes symlinks to versioned conf files."
       parameter '-n', '--dry-run', 'blah blah'
       parameter :did_phusion, '-Y', "you did install phusion already"
       def execute
