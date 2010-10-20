@@ -5,8 +5,9 @@ Hipe::Tinyscript.const_defined?(:Support) or require File.expand_path('../../hip
 
 module PassengerConf
   Conf = {
-    :blah => [
-      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/nginx.conf', :dst => '/etc/nginx/nginx.conf'}
+    :files => [
+      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/nginx.conf', :dst => '/etc/nginx/nginx.conf'},
+      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/mime.types', :dst => '/etc/nginx/mime.types'}
     ]
   }
 end
@@ -29,7 +30,12 @@ module PassengerConf
       def execute_with_status
         st = install_gem and return st
         (st = phusion_interactive and return st) unless @param.key? :did_phusion
-        st = do_simmy(@param[:blah][0][:src], @param[:blah][0][:dst], true) and return st
+        statii = []
+        @param[:files].each do |pair|
+          statii.push do_simmy(pair[:src], pair[:dst], true)
+        end
+        statii = statii.select{ |x| x }.uniq.map(&:to_s).sort
+        statii.any? ? (statii * '__and__').to_sym : nil # wonderhack
       end
     private
       def do_simmy full_src, tgt, move_to_backup = false
@@ -48,7 +54,7 @@ module PassengerConf
               end
             end
           else
-            out colorize('notice: ', :yellow) << "not a symlink: #{tgt}"
+            out colorize('notice: ', :yellow) << "exists but is not a symlink: #{tgt}"
             if move_to_backup
               make_backup tgt
               FileUtils.rm(tgt, :verbose => true, :noop => dry_run?)
