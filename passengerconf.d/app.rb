@@ -6,8 +6,10 @@ Hipe::Tinyscript.const_defined?(:Support) or require File.expand_path('../../hip
 module PassengerConf
   Conf = {
     :files => [
-      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/nginx.conf', :dst => '/etc/nginx/nginx.conf'},
-      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/mime.types', :dst => '/etc/nginx/mime.types'}
+      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/nginx.conf', :tgt => '/etc/nginx/nginx.conf'},
+      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/mime.types', :tgt => '/etc/nginx/mime.types'},
+      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/nginx-start.sh', :tgt => '/etc/nginx/nginx-start.sh'},
+      {:src => '/etc/nginx', :tgt => '/opt/nginx/conf' }
     ]
   }
 end
@@ -32,7 +34,7 @@ module PassengerConf
         (st = phusion_interactive and return st) unless @param.key? :did_phusion
         statii = []
         @param[:files].each do |pair|
-          statii.push do_simmy(pair[:src], pair[:dst], true)
+          statii.push do_simmy(pair[:src], pair[:tgt], true)
         end
         statii = statii.select{ |x| x }.uniq.map(&:to_s).sort
         statii.any? ? (statii * '__and__').to_sym : nil # wonderhack
@@ -56,8 +58,13 @@ module PassengerConf
           else
             out colorize('notice: ', :yellow) << "exists but is not a symlink: #{tgt}"
             if move_to_backup
-              make_backup tgt
-              FileUtils.rm(tgt, :verbose => true, :noop => dry_run?)
+              if File.directory? tgt
+                fail("nevar") if File.exist?(name = get_backup_name(tgt))
+                FileUtils.mv(tgt, name, :verbose => true, :noop => dry_run?)
+              else
+                make_backup tgt
+                FileUtils.rm(tgt, :verbose => true, :noop => dry_run?)
+              end
               do_symlink = true
             end
           end
