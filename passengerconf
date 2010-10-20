@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+
+require File.dirname(__FILE__) + '/passengerconf.d/app'
+
+PassengerConf::App.new.run(ARGV) if File.basename($PROGRAM_NAME) == File.basename(__FILE__)
