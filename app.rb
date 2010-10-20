@@ -47,7 +47,7 @@ module Hipe::Tinyscript
       out colorize('commands:', :bright, :green)
       if t.rows.any?
         whitespace = ' ' * (FOUR + FIXME)
-        fmt = "    %#{t.width(0)}s#{whitespace}%-#{t.width(1)}s"
+        fmt = "    %-#{t.width(0)}s#{whitespace}%-#{t.width(1)}s"
         t.rows.each{ |colA, colB| out sprintf(fmt, colA, colB) }
       end
       :interrupt_handled
