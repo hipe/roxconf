@@ -5,6 +5,7 @@ RoxConf::Conf = {
     { :path => 'confconf' },
     { :path => 'userconf' },
     { :path => 'redconf' },
+    { :path => 'rubyeeconf' },    
     { :path => 'monitconf.d/monitconf'},
     { :path => 'passengerconf' },
     { :path => '/etc/nginx/sites', :cd => '../hipe-sites' },
