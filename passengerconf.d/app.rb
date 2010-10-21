@@ -7,8 +7,12 @@ module PassengerConf
   Conf = {
     :files => [
       {:src => '/etc/roxconf/servers/hipeland/etc/nginx/nginx.conf', :tgt => '/etc/nginx/nginx.conf'},
-      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/mime.types', :tgt => '/etc/nginx/mime.types'},
+      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/mime.types', :tgt => '/etc/nginx/inc/mime.types'},
+      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/fastcgi_params', :tgt => '/etc/nginx/inc/fastcgi_params'},
+      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/inc/common.ngconf', :tgt => '/etc/nginx/inc/common.ngconf'},
       {:src => '/etc/roxconf/servers/hipeland/etc/nginx/nginx-start.sh', :tgt => '/etc/nginx/nginx-start.sh'},
+      {:src => '/etc/roxconf/servers/hipeland/etc/nginx/sites-available/redmine-git.ngconf', :tgt => '/etc/nginx/sites-available/redmine-git.ngconf'},
+      {:src => '/etc/roxconf/servers/hipeland/etc/init.d/nginx', :tgt => '/etc/init.d/nginx'},
       {:src => '/etc/nginx', :tgt => '/opt/nginx/conf' }
     ]
   }
@@ -34,7 +38,12 @@ module PassengerConf
         (st = phusion_interactive and return st) unless @param.key? :did_phusion
         statii = []
         @param[:files].each do |pair|
-          statii.push do_simmy(pair[:src], pair[:tgt], true)
+          begin
+            statii.push do_simmy(pair[:src], pair[:tgt], true)
+          rescue Errno::EACCES => e
+            out colorize('privileges: ', :red) << "with #{pair[:src]} -> #{pair[:tgt]}: #{e.message}"
+            statii.push :eaccess
+          end
         end
         statii = statii.select{ |x| x }.uniq.map(&:to_s).sort
         statii.any? ? (statii * '__and__').to_sym : nil # wonderhack
