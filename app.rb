@@ -1,4 +1,4 @@
-# require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
+require 'ruby-debug'; puts "\e[1;5;33mruby-debug\e[0m"
 module Hipe; end
 me = File.dirname(__FILE__)
 require "#{me}/hipe-tinyscript/core.rb" unless Hipe.const_defined? 'Tinyscript'
@@ -32,9 +32,13 @@ module RoxConf
       description "where possible try to install roxconf child scripts with git"
       parameter '-n', '--dry-run', "don't actually install anything"
       def execute
-        @app.app_infos.each do |ai|
-          if File.exist? info.path_interpolated
-            out colorize('exists: ', :bright, :green) << ai.path_interpolated
+        @app.app_infos.select{ |ai| ai.key?(:git) }.each do |ai|
+          if ! ai.key? :cd
+            out colorize('notice: ', :yellow) << "what to do without cd? #{ai.path_interpolated}"
+            next
+          end
+          if File.exist? ai.path_dirname
+            out colorize('exists: ', :bright, :green) << ai.path_dirname
           else
             try_install ai
           end
@@ -47,7 +51,7 @@ module RoxConf
           out colorize('notice: ', :yellow) << "no git info known about #{path}. can't install."
           return :no_git_info
         end
-        one_level_up = File.dirname info.path_interpolated
+        one_level_up = info.path_dirname
         two_level_up = File.dirname one_level_up
         if File.exist?(one_level_up)
           out colorize('notice: ') << "can't install. dir already exists: #{one_level_up}"
