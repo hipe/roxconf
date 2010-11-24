@@ -42,13 +42,15 @@ module RubyEeConf
         if ! File.directory? sourcedir
           FileUtils.mkdir_p(sourcedir, :verbose => true, :noop => dry_run?)
         end
+        puts "checking: #{outfile}"
         if File.exists? outfile
           out colorize("using: ", :green) << outfile
           return nil
         end
         baktix("wget -O #{outfile} #{tarball}") do |std|
+          std.dry{ |s| out colorize('dry: ', :yellow) << s }
           std.out{ |s| out colorize('wget: ', :green) << s }
-          std.err{ |s| out colorize('wget: ', :red) << s } # this one usually
+          std.err{ |s| out colorize('wget: ', :red) << s.inspect } # this one usually
         end
         nil # otherwise above returns :stderr_written
       end
@@ -59,8 +61,9 @@ module RubyEeConf
           return nil
         end
         FileUtils.mkdir_p(extract_dir, :verbose => 1, :noop => dry_run?)
-        baktix("tar -xzvf #{outfile} -C #{extract_dir}") do |std|
-          std.err{ |s| out colorize("tar: ", :green) << s }
+        baktix("tar -xzvf #{outfile} -C #{extract_dir} 2>&1") do |std|
+          std.dry{ |s| out colorize("tar dry: ", :yellow) << s }
+          std.out{ |s| out colorize("tar: ", :green) << s }
         end
         nil
       end

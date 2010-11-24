@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require 'rubygems' # wayne seguine told me this is okl
 require File.dirname(__FILE__)+'/rubyeeconf.d/app'
 
 RubyEeConf::App.new.run(ARGV) if File.basename(__FILE__) == File.basename($PROGRAM_NAME)
